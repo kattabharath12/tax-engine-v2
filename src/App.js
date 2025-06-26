@@ -1431,10 +1431,92 @@ const UserRegistrationAuth = () => {
     );
   };
 
-  // Completion Dashboard
-  const CompleteDashboard = () => {
-    return (
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-8 text-center">
+ // Fixed Completion Dashboard with Working Buttons
+const CompleteDashboard = () => {
+  const [activeModal, setActiveModal] = useState(null);
+  const [refundStatus, setRefundStatus] = useState({
+    federal: { status: 'Processing', date: 'Expected: March 15, 2024', amount: '$2,500' },
+    state: { status: 'Approved', date: 'Expected: March 10, 2024', amount: '$750' }
+  });
+
+  // Download Returns Function
+  const handleDownloadReturns = () => {
+    // Create mock PDF content
+    const pdfContent = `
+TAX RETURN SUMMARY - 2024
+=========================
+
+Taxpayer Information:
+Name: John Taxpayer
+SSN: ***-**-1234
+Filing Status: Single
+
+Income Summary:
+W-2 Income: $65,000
+1099 Income: $8,000
+Total Income: $73,000
+
+Tax Calculation:
+Standard Deduction: $13,850
+Taxable Income: $59,150
+Federal Tax: $6,934
+State Tax: $2,958
+Total Tax: $9,892
+
+Refund Information:
+Federal Refund: $2,500
+State Refund: $750
+Total Refund: $3,250
+
+Confirmation Numbers:
+Federal: 202412345678901234
+State: CA-2024-987654321
+
+Filing Date: ${new Date().toLocaleDateString()}
+    `;
+
+    // Create and download file
+    const blob = new Blob([pdfContent], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'Tax_Return_2024_Summary.txt';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+
+    // Show success message
+    alert('Tax return summary downloaded successfully!\n\nNote: In a real system, this would be a secure PDF with your complete tax forms.');
+  };
+
+  // Track Refund Function
+  const handleTrackRefund = () => {
+    setActiveModal('refund');
+  };
+
+  // View Documents Function
+  const handleViewDocuments = () => {
+    setActiveModal('documents');
+  };
+
+  // Close Modal
+  const closeModal = () => {
+    setActiveModal(null);
+  };
+
+  // Mock document list
+  const documents = [
+    { name: 'Form 1040 - Federal Return', type: 'PDF', size: '245 KB', status: 'Filed' },
+    { name: 'State Return - California', type: 'PDF', size: '189 KB', status: 'Filed' },
+    { name: 'W-2 from Tech Corp Inc', type: 'PDF', size: '87 KB', status: 'Processed' },
+    { name: '1099-MISC from Freelance Hub', type: 'PDF', size: '62 KB', status: 'Processed' },
+    { name: 'Filing Confirmation', type: 'PDF', size: '45 KB', status: 'Available' }
+  ];
+
+  return (
+    <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-8">
+      <div className="text-center mb-8">
         <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-6" />
         <h2 className="text-3xl font-bold mb-4">Tax Filing Complete!</h2>
         
@@ -1455,22 +1537,192 @@ const UserRegistrationAuth = () => {
         </div>
 
         <div className="grid grid-cols-3 gap-4">
-          <button className="bg-blue-600 text-white p-4 rounded-lg">
+          <button 
+            onClick={handleDownloadReturns}
+            className="bg-blue-600 text-white p-4 rounded-lg hover:bg-blue-700 transition-colors"
+          >
             <Download className="w-6 h-6 mx-auto mb-2" />
             Download Returns
           </button>
-          <button className="bg-green-600 text-white p-4 rounded-lg">
+          <button 
+            onClick={handleTrackRefund}
+            className="bg-green-600 text-white p-4 rounded-lg hover:bg-green-700 transition-colors"
+          >
             <DollarSign className="w-6 h-6 mx-auto mb-2" />
             Track Refund
           </button>
-          <button className="bg-purple-600 text-white p-4 rounded-lg">
+          <button 
+            onClick={handleViewDocuments}
+            className="bg-purple-600 text-white p-4 rounded-lg hover:bg-purple-700 transition-colors"
+          >
             <FileText className="w-6 h-6 mx-auto mb-2" />
             View Documents
           </button>
         </div>
       </div>
-    );
-  };
+
+      {/* Refund Tracking Modal */}
+      {activeModal === 'refund' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-96 overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold">Refund Status Tracker</h3>
+              <button 
+                onClick={closeModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              {/* Federal Refund */}
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h4 className="font-bold mb-3 flex items-center">
+                  <DollarSign className="w-5 h-5 mr-2 text-blue-600" />
+                  Federal Refund Status
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p><strong>Amount:</strong> {refundStatus.federal.amount}</p>
+                    <p><strong>Status:</strong> <span className="text-blue-600">{refundStatus.federal.status}</span></p>
+                    <p><strong>Expected:</strong> {refundStatus.federal.date}</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                      <div className="bg-blue-600 h-2 rounded-full w-3/4"></div>
+                    </div>
+                    <p className="text-sm text-gray-600">75% Complete</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* State Refund */}
+              <div className="bg-green-50 p-4 rounded-lg">
+                <h4 className="font-bold mb-3 flex items-center">
+                  <DollarSign className="w-5 h-5 mr-2 text-green-600" />
+                  State Refund Status
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p><strong>Amount:</strong> {refundStatus.state.amount}</p>
+                    <p><strong>Status:</strong> <span className="text-green-600">{refundStatus.state.status}</span></p>
+                    <p><strong>Expected:</strong> {refundStatus.state.date}</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                      <div className="bg-green-600 h-2 rounded-full w-full"></div>
+                    </div>
+                    <p className="text-sm text-gray-600">100% Complete</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tracking Information */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-bold mb-3">Tracking Timeline</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center">
+                    <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
+                    <span>Return received and accepted</span>
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
+                    <span>Return approved for processing</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-4 h-4 border-2 border-blue-600 rounded-full mr-2"></div>
+                    <span>Refund being processed</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-4 h-4 border-2 border-gray-300 rounded-full mr-2"></div>
+                    <span>Refund sent to bank</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-6 text-center">
+              <button 
+                onClick={closeModal}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Documents Modal */}
+      {activeModal === 'documents' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-96 overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold">Your Tax Documents</h3>
+              <button 
+                onClick={closeModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              {documents.map((doc, index) => (
+                <div key={index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                  <div className="flex items-center">
+                    <FileText className="w-6 h-6 text-blue-600 mr-3" />
+                    <div>
+                      <p className="font-medium">{doc.name}</p>
+                      <p className="text-sm text-gray-600">{doc.type} • {doc.size}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      doc.status === 'Filed' ? 'bg-green-100 text-green-800' :
+                      doc.status === 'Processed' ? 'bg-blue-100 text-blue-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {doc.status}
+                    </span>
+                    <button 
+                      onClick={() => {
+                        // Mock download functionality
+                        alert(`Downloading ${doc.name}...\n\nNote: In a real system, this would download the actual document.`);
+                      }}
+                      className="text-blue-600 hover:text-blue-800 text-sm"
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="mt-6 text-center">
+              <button 
+                onClick={() => {
+                  // Download all documents
+                  alert('Downloading all documents as ZIP file...\n\nNote: In a real system, this would create a secure ZIP file with all your tax documents.');
+                }}
+                className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 mr-3"
+              >
+                Download All
+              </button>
+              <button 
+                onClick={closeModal}
+                className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
   return (
     <div className="min-h-screen bg-gray-100">
