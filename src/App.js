@@ -16,13 +16,35 @@ const USFederalStateTaxSystem = () => {
     calculations: { federal: 0, state: 0, refund: 0 }
   });
 
- // Fixed User Registration & Authentication Component
+// Fixed User Registration & Authentication with Working Verification
 const UserRegistrationAuth = () => {
   const [authData, setAuthData] = useState({ 
     email: '', password: '', phone: '', ssn: '', mfaCode: '', 
-    showMFA: false, verificationStep: 'login' 
+    showMFA: false, verificationStep: 'login', verificationMethod: '',
+    kbaAnswers: {}, documentUploaded: false, thirdPartyVerified: false
   });
   const [errors, setErrors] = useState({});
+  const [currentKBAQuestion, setCurrentKBAQuestion] = useState(0);
+  const [verificationComplete, setVerificationComplete] = useState(false);
+
+  // Sample KBA Questions
+  const kbaQuestions = [
+    {
+      question: "What was the name of your first pet?",
+      options: ["Buddy", "Max", "Bella", "Charlie"],
+      correct: 0
+    },
+    {
+      question: "What street did you live on in 2020?",
+      options: ["Main Street", "Oak Avenue", "Pine Road", "Elm Drive"],
+      correct: 1
+    },
+    {
+      question: "What was your first car's make?",
+      options: ["Toyota", "Honda", "Ford", "Chevrolet"],
+      correct: 2
+    }
+  ];
 
   // Email validation - accepts all valid email formats
   const validateEmail = (email) => {
@@ -30,14 +52,14 @@ const UserRegistrationAuth = () => {
     return emailRegex.test(email);
   };
 
-  // Phone number validation - only numbers, formats like (555) 555-5555 or 555-555-5555
+  // Phone number validation
   const validatePhone = (phone) => {
     const phoneRegex = /^[\d\s\-\(\)]+$/;
     const cleanPhone = phone.replace(/\D/g, '');
     return phoneRegex.test(phone) && cleanPhone.length === 10;
   };
 
-  // SSN validation - XXX-XX-XXXX format
+  // SSN validation
   const validateSSN = (ssn) => {
     const ssnRegex = /^\d{3}-\d{2}-\d{4}$/;
     return ssnRegex.test(ssn);
@@ -73,7 +95,6 @@ const UserRegistrationAuth = () => {
     let formattedValue = value;
     let newErrors = { ...errors };
 
-    // Clear previous error for this field
     delete newErrors[field];
 
     switch (field) {
@@ -140,17 +161,78 @@ const UserRegistrationAuth = () => {
       return;
     }
 
-    // If validation passes, proceed
-    if (authData.verificationStep === 'mfa') {
-      setUser({ email: authData.email, verified: true });
-      setCurrentStep('dataCollection');
+    // If validation passes, proceed to verification
+    setAuthData({ ...authData, showMFA: true, verificationStep: 'select' });
+  };
+
+  // Handle Identity Verification Method Selection
+  const handleVerification = (method) => {
+    setAuthData({ ...authData, verificationMethod: method, verificationStep: method });
+  };
+
+  // Handle KBA Questions
+  const handleKBAAnswer = (answerIndex) => {
+    const currentQuestion = kbaQuestions[currentKBAQuestion];
+    const isCorrect = answerIndex === currentQuestion.correct;
+    
+    const newAnswers = { ...authData.kbaAnswers };
+    newAnswers[currentKBAQuestion] = { answer: answerIndex, correct: isCorrect };
+    
+    setAuthData({ ...authData, kbaAnswers: newAnswers });
+
+    if (currentKBAQuestion < kbaQuestions.length - 1) {
+      setCurrentKBAQuestion(currentKBAQuestion + 1);
     } else {
-      setAuthData({ ...authData, showMFA: true, verificationStep: 'mfa' });
+      // Check if user passed KBA (at least 2 out of 3 correct)
+      const correctAnswers = Object.values(newAnswers).filter(a => a.correct).length;
+      if (correctAnswers >= 2) {
+        setVerificationComplete(true);
+        setAuthData({ ...authData, verificationStep: 'mfa', kbaAnswers: newAnswers });
+      } else {
+        setErrors({ kba: 'KBA verification failed. Please try a different verification method.' });
+        setAuthData({ ...authData, verificationStep: 'select' });
+        setCurrentKBAQuestion(0);
+      }
     }
   };
 
-  const handleVerification = (type) => {
-    setAuthData({ ...authData, verificationStep: type });
+  // Handle Document Upload
+  const handleDocumentUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Simulate document processing
+      setTimeout(() => {
+        setAuthData({ ...authData, documentUploaded: true });
+        setVerificationComplete(true);
+        setAuthData({ ...authData, verificationStep: 'mfa', documentUploaded: true });
+      }, 2000);
+    }
+  };
+
+  // Handle Third-Party Verification
+  const handleThirdPartyVerification = () => {
+    // Simulate third-party verification process
+    setTimeout(() => {
+      setAuthData({ ...authData, thirdPartyVerified: true });
+      setVerificationComplete(true);
+      setAuthData({ ...authData, verificationStep: 'mfa', thirdPartyVerified: true });
+    }, 3000);
+  };
+
+  // Handle MFA Code Verification
+  const handleMFAVerification = () => {
+    if (authData.mfaCode.length !== 6) {
+      setErrors({ mfa: 'Please enter a valid 6-digit code' });
+      return;
+    }
+    
+    // Simulate MFA verification (accept any 6-digit code for demo)
+    if (authData.mfaCode === '123456' || authData.mfaCode.length === 6) {
+      setUser({ email: authData.email, verified: true });
+      setCurrentStep('dataCollection');
+    } else {
+      setErrors({ mfa: 'Invalid MFA code. Please try again.' });
+    }
   };
 
   return (
@@ -242,57 +324,196 @@ const UserRegistrationAuth = () => {
         </form>
       ) : (
         <div>
-          <div className="mb-6">
-            <h3 className="text-lg font-bold mb-4">Identity Verification Required</h3>
-            <div className="grid grid-cols-3 gap-4">
-              <button
-                onClick={() => handleVerification('kba')}
-                className="p-4 border rounded-lg hover:bg-blue-50 transition-colors"
-              >
-                <Shield className="w-6 h-6 mx-auto mb-2" />
-                <span className="text-sm">KBA Questions</span>
-              </button>
-              <button
-                onClick={() => handleVerification('document')}
-                className="p-4 border rounded-lg hover:bg-blue-50 transition-colors"
-              >
-                <FileText className="w-6 h-6 mx-auto mb-2" />
-                <span className="text-sm">Document Upload</span>
-              </button>
-              <button
-                onClick={() => handleVerification('thirdparty')}
-                className="p-4 border rounded-lg hover:bg-blue-50 transition-colors"
-              >
-                <CheckCircle className="w-6 h-6 mx-auto mb-2" />
-                <span className="text-sm">Third-Party Verification</span>
-              </button>
+          {/* Verification Method Selection */}
+          {authData.verificationStep === 'select' && (
+            <div className="mb-6">
+              <h3 className="text-lg font-bold mb-4">Identity Verification Required</h3>
+              <p className="text-gray-600 mb-4">Choose a verification method to continue:</p>
+              
+              {errors.kba && (
+                <div className="bg-red-50 border border-red-200 p-3 rounded-lg mb-4">
+                  <p className="text-red-600 text-sm">{errors.kba}</p>
+                </div>
+              )}
+              
+              <div className="grid grid-cols-1 gap-4">
+                <button
+                  onClick={() => handleVerification('kba')}
+                  className="p-4 border rounded-lg hover:bg-blue-50 transition-colors text-left"
+                >
+                  <div className="flex items-center">
+                    <Shield className="w-6 h-6 mr-3 text-blue-600" />
+                    <div>
+                      <h4 className="font-medium">Knowledge-Based Authentication (KBA)</h4>
+                      <p className="text-sm text-gray-600">Answer questions about your personal history</p>
+                    </div>
+                  </div>
+                </button>
+                
+                <button
+                  onClick={() => handleVerification('document')}
+                  className="p-4 border rounded-lg hover:bg-blue-50 transition-colors text-left"
+                >
+                  <div className="flex items-center">
+                    <FileText className="w-6 h-6 mr-3 text-green-600" />
+                    <div>
+                      <h4 className="font-medium">Document Upload</h4>
+                      <p className="text-sm text-gray-600">Upload a government-issued ID</p>
+                    </div>
+                  </div>
+                </button>
+                
+                <button
+                  onClick={() => handleVerification('thirdparty')}
+                  className="p-4 border rounded-lg hover:bg-blue-50 transition-colors text-left"
+                >
+                  <div className="flex items-center">
+                    <CheckCircle className="w-6 h-6 mr-3 text-purple-600" />
+                    <div>
+                      <h4 className="font-medium">Third-Party Verification</h4>
+                      <p className="text-sm text-gray-600">Verify through external credit agencies</p>
+                    </div>
+                  </div>
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="bg-blue-50 p-4 rounded-lg mb-4">
-            <h4 className="font-bold mb-2">Multi-Factor Authentication</h4>
-            <p className="text-sm text-gray-600 mb-3">
-              Enter the 6-digit code sent to {authData.phone}
-            </p>
-            <input
-              type="text"
-              placeholder="Enter 6-digit MFA Code"
-              value={authData.mfaCode}
-              onChange={(e) => {
-                // Only allow numbers, max 6 digits
-                const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-                setAuthData({...authData, mfaCode: value});
-              }}
-              className="w-full p-3 border rounded-lg mb-3 text-center text-2xl tracking-widest"
-              maxLength="6"
-            />
+          {/* KBA Questions */}
+          {authData.verificationStep === 'kba' && (
+            <div className="mb-6">
+              <h3 className="text-lg font-bold mb-4">Knowledge-Based Authentication</h3>
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <p className="text-sm text-blue-800 mb-4">
+                  Question {currentKBAQuestion + 1} of {kbaQuestions.length}
+                </p>
+                <h4 className="font-medium mb-4">{kbaQuestions[currentKBAQuestion].question}</h4>
+                <div className="space-y-2">
+                  {kbaQuestions[currentKBAQuestion].options.map((option, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleKBAAnswer(index)}
+                      className="w-full p-3 text-left border rounded-lg hover:bg-blue-100 transition-colors"
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Document Upload */}
+          {authData.verificationStep === 'document' && (
+            <div className="mb-6">
+              <h3 className="text-lg font-bold mb-4">Document Upload Verification</h3>
+              <div className="bg-green-50 p-4 rounded-lg">
+                <p className="text-sm text-green-800 mb-4">
+                  Upload a clear photo of your government-issued ID (Driver's License, Passport, etc.)
+                </p>
+                {!authData.documentUploaded ? (
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={handleDocumentUpload}
+                      className="w-full p-3 border rounded-lg mb-3"
+                    />
+                    <p className="text-xs text-gray-600">Accepted formats: JPG, PNG, PDF</p>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-2" />
+                    <p className="text-green-600 font-medium">Document uploaded successfully!</p>
+                    <p className="text-sm text-gray-600">Processing verification...</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Third-Party Verification */}
+          {authData.verificationStep === 'thirdparty' && (
+            <div className="mb-6">
+              <h3 className="text-lg font-bold mb-4">Third-Party Verification</h3>
+              <div className="bg-purple-50 p-4 rounded-lg">
+                {!authData.thirdPartyVerified ? (
+                  <div className="text-center">
+                    <p className="text-sm text-purple-800 mb-4">
+                      We'll verify your identity through external credit agencies and public records.
+                    </p>
+                    <button
+                      onClick={handleThirdPartyVerification}
+                      className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors"
+                    >
+                      Start Verification Process
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <CheckCircle className="w-12 h-12 text-purple-600 mx-auto mb-2" />
+                    <p className="text-purple-600 font-medium">Verification successful!</p>
+                    <p className="text-sm text-gray-600">Identity confirmed through external sources</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* MFA Section */}
+          {authData.verificationStep === 'mfa' && (
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <h4 className="font-bold mb-2">Multi-Factor Authentication</h4>
+              <p className="text-sm text-gray-600 mb-3">
+                Enter the 6-digit code sent to {authData.phone}
+              </p>
+              
+              {errors.mfa && (
+                <div className="bg-red-50 border border-red-200 p-2 rounded mb-3">
+                  <p className="text-red-600 text-sm">{errors.mfa}</p>
+                </div>
+              )}
+              
+              <input
+                type="text"
+                placeholder="Enter 6-digit MFA Code"
+                value={authData.mfaCode}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                  setAuthData({...authData, mfaCode: value});
+                  // Clear error when user starts typing
+                  if (errors.mfa) {
+                    setErrors({});
+                  }
+                }}
+                className="w-full p-3 border rounded-lg mb-3 text-center text-2xl tracking-widest"
+                maxLength="6"
+              />
+              
+              <div className="text-center">
+                <p className="text-xs text-gray-500 mb-3">
+                  Demo: Enter any 6-digit code (or use 123456)
+                </p>
+                <button
+                  onClick={handleMFAVerification}
+                  disabled={authData.mfaCode.length !== 6}
+                  className="w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  Verify & Continue
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Back button for verification steps */}
+          {authData.verificationStep !== 'select' && authData.verificationStep !== 'mfa' && (
             <button
-              onClick={handleAuth}
-              className="w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 transition-colors"
+              onClick={() => setAuthData({ ...authData, verificationStep: 'select' })}
+              className="mt-4 text-blue-600 hover:text-blue-800 text-sm"
             >
-              Verify & Continue
+              ← Back to verification methods
             </button>
-          </div>
+          )}
         </div>
       )}
     </div>
