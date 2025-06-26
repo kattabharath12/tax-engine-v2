@@ -16,123 +16,288 @@ const USFederalStateTaxSystem = () => {
     calculations: { federal: 0, state: 0, refund: 0 }
   });
 
-  // 1.1 User Registration & Authentication
-  const UserRegistrationAuth = () => {
-    const [authData, setAuthData] = useState({ 
-      email: '', password: '', phone: '', ssn: '', mfaCode: '', 
-      showMFA: false, verificationStep: 'login' 
-    });
+ // Fixed User Registration & Authentication Component
+const UserRegistrationAuth = () => {
+  const [authData, setAuthData] = useState({ 
+    email: '', password: '', phone: '', ssn: '', mfaCode: '', 
+    showMFA: false, verificationStep: 'login' 
+  });
+  const [errors, setErrors] = useState({});
 
-    const handleAuth = (e) => {
-      e.preventDefault();
-      if (authData.verificationStep === 'mfa') {
-        setUser({ email: authData.email, verified: true });
-        setCurrentStep('dataCollection');
-      } else {
-        setAuthData({ ...authData, showMFA: true, verificationStep: 'mfa' });
-      }
-    };
+  // Email validation - accepts all valid email formats
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
-    const handleVerification = (type) => {
-      setAuthData({ ...authData, verificationStep: type });
-    };
+  // Phone number validation - only numbers, formats like (555) 555-5555 or 555-555-5555
+  const validatePhone = (phone) => {
+    const phoneRegex = /^[\d\s\-\(\)]+$/;
+    const cleanPhone = phone.replace(/\D/g, '');
+    return phoneRegex.test(phone) && cleanPhone.length === 10;
+  };
 
-    return (
-      <div className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-lg">
-        <h2 className="text-2xl font-bold mb-6 flex items-center">
-          <User className="w-6 h-6 mr-2" />
-          User Registration & Authentication
-        </h2>
+  // SSN validation - XXX-XX-XXXX format
+  const validateSSN = (ssn) => {
+    const ssnRegex = /^\d{3}-\d{2}-\d{4}$/;
+    return ssnRegex.test(ssn);
+  };
 
-        {!authData.showMFA ? (
-          <form onSubmit={handleAuth} className="space-y-4">
+  // Format phone number as user types
+  const formatPhoneNumber = (value) => {
+    const phoneNumber = value.replace(/\D/g, '');
+    const phoneNumberLength = phoneNumber.length;
+    if (phoneNumberLength < 4) {
+      return phoneNumber;
+    } else if (phoneNumberLength < 7) {
+      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
+    } else {
+      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+    }
+  };
+
+  // Format SSN as user types
+  const formatSSN = (value) => {
+    const ssn = value.replace(/\D/g, '');
+    const ssnLength = ssn.length;
+    if (ssnLength < 4) {
+      return ssn;
+    } else if (ssnLength < 6) {
+      return `${ssn.slice(0, 3)}-${ssn.slice(3)}`;
+    } else {
+      return `${ssn.slice(0, 3)}-${ssn.slice(3, 5)}-${ssn.slice(5, 9)}`;
+    }
+  };
+
+  const handleInputChange = (field, value) => {
+    let formattedValue = value;
+    let newErrors = { ...errors };
+
+    // Clear previous error for this field
+    delete newErrors[field];
+
+    switch (field) {
+      case 'email':
+        if (value && !validateEmail(value)) {
+          newErrors.email = 'Please enter a valid email address';
+        }
+        break;
+      
+      case 'phone':
+        formattedValue = formatPhoneNumber(value);
+        if (value && !validatePhone(formattedValue)) {
+          newErrors.phone = 'Please enter a valid 10-digit phone number';
+        }
+        break;
+      
+      case 'ssn':
+        formattedValue = formatSSN(value);
+        if (value && !validateSSN(formattedValue)) {
+          newErrors.ssn = 'Please enter a valid SSN (XXX-XX-XXXX)';
+        }
+        break;
+      
+      default:
+        break;
+    }
+
+    setAuthData({ ...authData, [field]: formattedValue });
+    setErrors(newErrors);
+  };
+
+  const handleAuth = (e) => {
+    e.preventDefault();
+    
+    // Validate all fields before submission
+    const newErrors = {};
+    
+    if (!authData.email) {
+      newErrors.email = 'Email is required';
+    } else if (!validateEmail(authData.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+    
+    if (!authData.password) {
+      newErrors.password = 'Password is required';
+    } else if (authData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    }
+    
+    if (!authData.phone) {
+      newErrors.phone = 'Phone number is required';
+    } else if (!validatePhone(authData.phone)) {
+      newErrors.phone = 'Please enter a valid 10-digit phone number';
+    }
+    
+    if (!authData.ssn) {
+      newErrors.ssn = 'SSN is required';
+    } else if (!validateSSN(authData.ssn)) {
+      newErrors.ssn = 'Please enter a valid SSN (XXX-XX-XXXX)';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    // If validation passes, proceed
+    if (authData.verificationStep === 'mfa') {
+      setUser({ email: authData.email, verified: true });
+      setCurrentStep('dataCollection');
+    } else {
+      setAuthData({ ...authData, showMFA: true, verificationStep: 'mfa' });
+    }
+  };
+
+  const handleVerification = (type) => {
+    setAuthData({ ...authData, verificationStep: type });
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-lg">
+      <h2 className="text-2xl font-bold mb-6 flex items-center">
+        <User className="w-6 h-6 mr-2" />
+        User Registration & Authentication
+      </h2>
+
+      {!authData.showMFA ? (
+        <form onSubmit={handleAuth} className="space-y-4">
+          {/* Email Field */}
+          <div>
             <input
               type="email"
-              placeholder="Email Address"
+              placeholder="Email Address (any valid email)"
               value={authData.email}
-              onChange={(e) => setAuthData({...authData, email: e.target.value})}
-              className="w-full p-3 border rounded-lg"
+              onChange={(e) => handleInputChange('email', e.target.value)}
+              className={`w-full p-3 border rounded-lg ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
               required
             />
+            {errors.email && (
+              <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+            )}
+            <p className="text-xs text-gray-500 mt-1">
+              Accepts all email providers: gmail.com, yahoo.com, outlook.com, etc.
+            </p>
+          </div>
+
+          {/* Password Field */}
+          <div>
             <input
               type="password"
-              placeholder="Password"
+              placeholder="Password (minimum 6 characters)"
               value={authData.password}
-              onChange={(e) => setAuthData({...authData, password: e.target.value})}
-              className="w-full p-3 border rounded-lg"
+              onChange={(e) => handleInputChange('password', e.target.value)}
+              className={`w-full p-3 border rounded-lg ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
               required
             />
+            {errors.password && (
+              <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+            )}
+          </div>
+
+          {/* Phone Number Field */}
+          <div>
             <input
               type="tel"
               placeholder="Phone Number"
               value={authData.phone}
-              onChange={(e) => setAuthData({...authData, phone: e.target.value})}
-              className="w-full p-3 border rounded-lg"
+              onChange={(e) => handleInputChange('phone', e.target.value)}
+              className={`w-full p-3 border rounded-lg ${errors.phone ? 'border-red-500' : 'border-gray-300'}`}
+              maxLength="14"
               required
             />
+            {errors.phone && (
+              <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+            )}
+            <p className="text-xs text-gray-500 mt-1">
+              Format: (555) 555-5555 - Only numbers allowed
+            </p>
+          </div>
+
+          {/* SSN Field */}
+          <div>
             <input
               type="text"
-              placeholder="SSN (XXX-XX-XXXX)"
+              placeholder="SSN"
               value={authData.ssn}
-              onChange={(e) => setAuthData({...authData, ssn: e.target.value})}
-              className="w-full p-3 border rounded-lg"
+              onChange={(e) => handleInputChange('ssn', e.target.value)}
+              className={`w-full p-3 border rounded-lg ${errors.ssn ? 'border-red-500' : 'border-gray-300'}`}
+              maxLength="11"
               required
             />
-            <button type="submit" className="w-full bg-blue-600 text-white p-3 rounded-lg">
-              Create Account
-            </button>
-          </form>
-        ) : (
-          <div>
-            <div className="mb-6">
-              <h3 className="text-lg font-bold mb-4">Identity Verification Required</h3>
-              <div className="grid grid-cols-3 gap-4">
-                <button
-                  onClick={() => handleVerification('kba')}
-                  className="p-4 border rounded-lg hover:bg-blue-50"
-                >
-                  <Shield className="w-6 h-6 mx-auto mb-2" />
-                  KBA Questions
-                </button>
-                <button
-                  onClick={() => handleVerification('document')}
-                  className="p-4 border rounded-lg hover:bg-blue-50"
-                >
-                  <FileText className="w-6 h-6 mx-auto mb-2" />
-                  Document Upload
-                </button>
-                <button
-                  onClick={() => handleVerification('thirdparty')}
-                  className="p-4 border rounded-lg hover:bg-blue-50"
-                >
-                  <CheckCircle className="w-6 h-6 mx-auto mb-2" />
-                  Third-Party Verification
-                </button>
-              </div>
-            </div>
+            {errors.ssn && (
+              <p className="text-red-500 text-sm mt-1">{errors.ssn}</p>
+            )}
+            <p className="text-xs text-gray-500 mt-1">
+              Format: XXX-XX-XXXX - Only numbers allowed
+            </p>
+          </div>
 
-            <div className="bg-blue-50 p-4 rounded-lg mb-4">
-              <h4 className="font-bold mb-2">Multi-Factor Authentication</h4>
-              <input
-                type="text"
-                placeholder="Enter MFA Code"
-                value={authData.mfaCode}
-                onChange={(e) => setAuthData({...authData, mfaCode: e.target.value})}
-                className="w-full p-3 border rounded-lg mb-3"
-              />
+          <button 
+            type="submit" 
+            className="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Create Account
+          </button>
+        </form>
+      ) : (
+        <div>
+          <div className="mb-6">
+            <h3 className="text-lg font-bold mb-4">Identity Verification Required</h3>
+            <div className="grid grid-cols-3 gap-4">
               <button
-                onClick={handleAuth}
-                className="w-full bg-green-600 text-white p-3 rounded-lg"
+                onClick={() => handleVerification('kba')}
+                className="p-4 border rounded-lg hover:bg-blue-50 transition-colors"
               >
-                Verify & Continue
+                <Shield className="w-6 h-6 mx-auto mb-2" />
+                <span className="text-sm">KBA Questions</span>
+              </button>
+              <button
+                onClick={() => handleVerification('document')}
+                className="p-4 border rounded-lg hover:bg-blue-50 transition-colors"
+              >
+                <FileText className="w-6 h-6 mx-auto mb-2" />
+                <span className="text-sm">Document Upload</span>
+              </button>
+              <button
+                onClick={() => handleVerification('thirdparty')}
+                className="p-4 border rounded-lg hover:bg-blue-50 transition-colors"
+              >
+                <CheckCircle className="w-6 h-6 mx-auto mb-2" />
+                <span className="text-sm">Third-Party Verification</span>
               </button>
             </div>
           </div>
-        )}
-      </div>
-    );
-  };
 
+          <div className="bg-blue-50 p-4 rounded-lg mb-4">
+            <h4 className="font-bold mb-2">Multi-Factor Authentication</h4>
+            <p className="text-sm text-gray-600 mb-3">
+              Enter the 6-digit code sent to {authData.phone}
+            </p>
+            <input
+              type="text"
+              placeholder="Enter 6-digit MFA Code"
+              value={authData.mfaCode}
+              onChange={(e) => {
+                // Only allow numbers, max 6 digits
+                const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                setAuthData({...authData, mfaCode: value});
+              }}
+              className="w-full p-3 border rounded-lg mb-3 text-center text-2xl tracking-widest"
+              maxLength="6"
+            />
+            <button
+              onClick={handleAuth}
+              className="w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 transition-colors"
+            >
+              Verify & Continue
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
   // 1.2 Data Collection
   const DataCollection = () => {
     const [activeTab, setActiveTab] = useState('personal');
