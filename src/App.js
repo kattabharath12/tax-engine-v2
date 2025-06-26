@@ -1,18 +1,4 @@
-<div className="bg-purple-50 p-4 rounded-lg">
-                  <label className="block font-medium mb-2">Child Tax Credit</label>
-                  <input
-                    type="number"
-                    value={formData.deductions.childCredit}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      deductions: { ...formData.deductions, childCredit: parseFloat(e.target.value) || 0 }
-                    })}
-                    className="w-full p-3 border rounded-lg"
-                    placeholder="$0.00"
-                  />
-                </div>
-              </div>
-            </div>
+</div>
           )}
 
           <div className="flex justify-between mt-8">
@@ -34,7 +20,6 @@
     );
   };
 
-  // Document Upload Component
   const DocumentUpload = () => {
     const [documents, setDocuments] = useState([]);
     const [importSource, setImportSource] = useState('');
@@ -58,7 +43,6 @@
         }, 2000);
       });
 
-      // Update formData with documents
       setFormData({
         ...formData,
         documents: [...formData.documents, ...files.map(file => ({ name: file.name, size: file.size }))]
@@ -174,7 +158,6 @@
     );
   };
 
-  // Tax Calculation Component
   const TaxCalculation = () => {
     const totalIncome = formData.income.w2 + formData.income.income1099 + formData.income.investments + formData.income.stateSpecific;
     const standardDeduction = 13850;
@@ -197,7 +180,7 @@
     const totalTax = federalTax + stateTax;
     const estimatedRefund = Math.max(0, (totalIncome * 0.18) - totalTax);
 
-    const [errors, setErrors] = useState([
+    const [errors] = useState([
       { type: 'warning', message: 'Verify W-2 income matches uploaded documents' },
       { type: 'info', message: 'Consider maximizing retirement contributions' }
     ]);
@@ -286,7 +269,7 @@
             </div>
             <div className="text-center p-4 bg-white rounded-lg">
               <p className="text-sm text-gray-600">Effective Rate</p>
-              <p className="text-2xl font-bold text-blue-600">{((totalTax/totalIncome)*100).toFixed(1)}%</p>
+              <p className="text-2xl font-bold text-blue-600">{totalIncome > 0 ? ((totalTax/totalIncome)*100).toFixed(1) : 0}%</p>
             </div>
           </div>
         </div>
@@ -309,7 +292,6 @@
     );
   };
 
-  // Review & Submission Component
   const ReviewSubmission = () => {
     const [submissionStatus, setSubmissionStatus] = useState('ready');
     const [filingMethod, setFilingMethod] = useState('efiling');
@@ -453,7 +435,6 @@
     );
   };
 
-  // Payment & Refunds Component
   const PaymentRefunds = () => {
     const [paymentMethod, setPaymentMethod] = useState('direct-debit');
     const [refundMethod, setRefundMethod] = useState('direct-deposit');
@@ -560,7 +541,6 @@
     );
   };
 
-  // Notifications & Support Component
   const NotificationsSupport = () => {
     const [notifications, setNotifications] = useState({
       email: true, sms: false, statusUpdates: true
@@ -653,7 +633,6 @@
     );
   };
 
-  // Completion Dashboard with Real Data
   const CompleteDashboard = () => {
     const [activeModal, setActiveModal] = useState(null);
     
@@ -694,7 +673,22 @@ TAX RETURN SUMMARY - 2024
 Taxpayer Information:
 Name: ${user.email.split('@')[0]} (User)
 SSN: ${formData.personal.ssn || '***-**-****'}
-Filing Status: ${formData.personal.filingStatus || 'Not specified'}import React, { useState } from 'react';
+Filing Status: ${formData.personal.filingStatus || 'Not specified'}
+Address: ${formData.personal.address || 'Not provided'}
+
+Income Summary:
+W-2 Income: ${formData.income.w2.toLocaleString()}
+1099 Income: ${formData.income.income1099.toLocaleString()}
+Investment Income: ${formData.income.investments.toLocaleString()}
+State-Specific Income: ${formData.income.stateSpecific.toLocaleString()}
+Total Income: ${totalIncome.toLocaleString()}
+
+Deduction Information:
+Deduction Type: ${formData.deductions.standardItemized}
+${formData.deductions.standardItemized === 'standard' ? 
+  `Standard Deduction: ${standardDeduction.toLocaleString()}` : 
+  'Itemized Deductions: (Details would be listed here)'}
+Education Credits: ${formData.import React, { useState } from 'react';
 import { 
   User, Shield, Upload, Calculator, FileText, CreditCard, Bell, HelpCircle,
   CheckCircle, AlertTriangle, Eye, EyeOff, Download, Send, Phone, Mail, 
@@ -712,7 +706,6 @@ const USFederalStateTaxSystem = () => {
     calculations: { federal: 0, state: 0, refund: 0 }
   });
 
-  // User Registration & Authentication
   const UserRegistrationAuth = () => {
     const [authData, setAuthData] = useState({ 
       email: '', password: '', phone: '', ssn: '', mfaCode: '', 
@@ -992,7 +985,7 @@ const USFederalStateTaxSystem = () => {
             </button>
           </form>
         ) : (
-          <div>
+          <>
             {authData.verificationStep === 'select' && (
               <div className="mb-6">
                 <h3 className="text-lg font-bold mb-4">Identity Verification Required</h3>
@@ -1176,13 +1169,12 @@ const USFederalStateTaxSystem = () => {
                 ← Back to verification methods
               </button>
             )}
-          </div>
+          </>
         )}
       </div>
     );
   };
 
-  // Data Collection Component
   const DataCollection = () => {
     const [activeTab, setActiveTab] = useState('personal');
 
@@ -1425,4 +1417,17 @@ const USFederalStateTaxSystem = () => {
                   />
                 </div>
 
-                <div className="bg-
+                <div className="bg-purple-50 p-4 rounded-lg">
+                  <label className="block font-medium mb-2">Child Tax Credit</label>
+                  <input
+                    type="number"
+                    value={formData.deductions.childCredit}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      deductions: { ...formData.deductions, childCredit: parseFloat(e.target.value) || 0 }
+                    })}
+                    className="w-full p-3 border rounded-lg"
+                    placeholder="$0.00"
+                  />
+                </div>
+              </div>
