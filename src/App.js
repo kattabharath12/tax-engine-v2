@@ -1,694 +1,4 @@
-</div>
-          )}
-
-          <div className="flex justify-between mt-8">
-            <button
-              onClick={() => setCurrentStep('registration')}
-              className="bg-gray-500 text-white px-6 py-3 rounded-lg"
-            >
-              Back
-            </button>
-            <button
-              onClick={() => setCurrentStep('documentUpload')}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg"
-            >
-              Continue to Documents
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const DocumentUpload = () => {
-    const [documents, setDocuments] = useState([]);
-    const [importSource, setImportSource] = useState('');
-
-    const handleFileUpload = (e) => {
-      const files = Array.from(e.target.files);
-      files.forEach(file => {
-        const newDoc = {
-          id: Date.now() + Math.random(),
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          status: 'processing'
-        };
-        setDocuments(prev => [...prev, newDoc]);
-        
-        setTimeout(() => {
-          setDocuments(prev => prev.map(doc => 
-            doc.id === newDoc.id ? { ...doc, status: 'completed' } : doc
-          ));
-        }, 2000);
-      });
-
-      setFormData({
-        ...formData,
-        documents: [...formData.documents, ...files.map(file => ({ name: file.name, size: file.size }))]
-      });
-    };
-
-    const handleImport = () => {
-      const importedData = {
-        w2Income: 65000,
-        federalWithheld: 9750,
-        stateWithheld: 3250
-      };
-      
-      setFormData({
-        ...formData,
-        income: { ...formData.income, w2: importedData.w2Income }
-      });
-      
-      alert(`Data imported from ${importSource}: Income ${importedData.w2Income.toLocaleString()}`);
-    };
-
-    return (
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-2xl font-bold mb-6">Document Upload & Import</h2>
-        
-        <div className="bg-blue-50 p-6 rounded-lg mb-6">
-          <h3 className="text-lg font-bold mb-4">Import from External Sources</h3>
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            <select
-              value={importSource}
-              onChange={(e) => setImportSource(e.target.value)}
-              className="p-3 border rounded-lg"
-            >
-              <option value="">Select Source</option>
-              <option value="ADP Payroll">ADP Payroll</option>
-              <option value="Bank of America">Bank of America</option>
-              <option value="TurboTax 2023">Previous TurboTax</option>
-              <option value="H&R Block">H&R Block</option>
-            </select>
-            <button
-              onClick={handleImport}
-              disabled={!importSource}
-              className="bg-green-600 text-white px-4 py-3 rounded-lg disabled:bg-gray-400"
-            >
-              Import Data
-            </button>
-          </div>
-        </div>
-
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-6">
-          <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2">Upload Tax Documents</h3>
-          <p className="text-gray-600 mb-4">PDF, JPG, PNG supported</p>
-          
-          <input
-            type="file"
-            multiple
-            onChange={handleFileUpload}
-            className="hidden"
-            id="file-upload"
-            accept=".pdf,.jpg,.jpeg,.png"
-          />
-          <label
-            htmlFor="file-upload"
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg cursor-pointer hover:bg-blue-700"
-          >
-            Choose Files
-          </label>
-        </div>
-
-        {documents.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-lg font-bold mb-4">Uploaded Documents</h3>
-            <div className="space-y-3">
-              {documents.map((doc) => (
-                <div key={doc.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center">
-                    <FileText className="w-6 h-6 text-blue-600 mr-3" />
-                    <div>
-                      <p className="font-medium">{doc.name}</p>
-                      <p className="text-sm text-gray-600">{(doc.size / 1024).toFixed(1)}KB</p>
-                    </div>
-                  </div>
-                  <div>
-                    {doc.status === 'processing' && (
-                      <span className="text-blue-600">Processing...</span>
-                    )}
-                    {doc.status === 'completed' && (
-                      <CheckCircle className="w-6 h-6 text-green-600" />
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="flex justify-between">
-          <button
-            onClick={() => setCurrentStep('dataCollection')}
-            className="bg-gray-500 text-white px-6 py-3 rounded-lg"
-          >
-            Back to Data Entry
-          </button>
-          <button
-            onClick={() => setCurrentStep('taxCalculation')}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg"
-          >
-            Continue to Calculations
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  const TaxCalculation = () => {
-    const totalIncome = formData.income.w2 + formData.income.income1099 + formData.income.investments + formData.income.stateSpecific;
-    const standardDeduction = 13850;
-    const taxableIncome = Math.max(0, totalIncome - standardDeduction);
-    
-    let federalTax = 0;
-    if (taxableIncome > 0) {
-      if (taxableIncome <= 11000) {
-        federalTax = taxableIncome * 0.10;
-      } else if (taxableIncome <= 44725) {
-        federalTax = 1100 + (taxableIncome - 11000) * 0.12;
-      } else if (taxableIncome <= 95375) {
-        federalTax = 5147 + (taxableIncome - 44725) * 0.22;
-      } else {
-        federalTax = 16290 + (taxableIncome - 95375) * 0.24;
-      }
-    }
-
-    const stateTax = taxableIncome * 0.05;
-    const totalTax = federalTax + stateTax;
-    const estimatedRefund = Math.max(0, (totalIncome * 0.18) - totalTax);
-
-    const [errors] = useState([
-      { type: 'warning', message: 'Verify W-2 income matches uploaded documents' },
-      { type: 'info', message: 'Consider maximizing retirement contributions' }
-    ]);
-
-    return (
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-2xl font-bold mb-6">Tax Calculations</h2>
-
-        <div className="mb-6">
-          <h3 className="text-lg font-bold mb-3">Error Checking & Validation</h3>
-          {errors.map((error, index) => (
-            <div key={index} className={`flex items-center p-3 rounded-lg mb-2 ${
-              error.type === 'warning' ? 'bg-yellow-50 border border-yellow-200' : 'bg-blue-50 border border-blue-200'
-            }`}>
-              {error.type === 'warning' ? 
-                <AlertTriangle className="w-5 h-5 text-yellow-600 mr-3" /> :
-                <CheckCircle className="w-5 h-5 text-blue-600 mr-3" />
-              }
-              <span>{error.message}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <div className="bg-blue-50 p-6 rounded-lg">
-            <h3 className="text-lg font-bold mb-4">Federal Tax (Form 1040)</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span>Total Income:</span>
-                <span className="font-medium">${totalIncome.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Standard Deduction:</span>
-                <span className="font-medium">-${standardDeduction.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between border-t pt-2">
-                <span>Taxable Income:</span>
-                <span className="font-bold">${taxableIncome.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Federal Tax:</span>
-                <span className="font-bold text-red-600">${Math.round(federalTax).toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-green-50 p-6 rounded-lg">
-            <h3 className="text-lg font-bold mb-4">State Tax Calculation</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span>Taxable Income:</span>
-                <span className="font-medium">${taxableIncome.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>State Tax Rate:</span>
-                <span className="font-medium">5.0%</span>
-              </div>
-              <div className="flex justify-between border-t pt-2">
-                <span>State Tax:</span>
-                <span className="font-bold text-red-600">${Math.round(stateTax).toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-yellow-50 p-4 rounded-lg mb-6">
-          <h4 className="font-bold mb-2">Amended Returns Support</h4>
-          <p className="text-sm text-gray-700 mb-3">
-            Need to file an amended return? We support Form 1040X for corrections.
-          </p>
-          <button className="bg-yellow-600 text-white px-4 py-2 rounded text-sm">
-            File Amended Return
-          </button>
-        </div>
-
-        <div className="bg-gray-100 p-6 rounded-lg">
-          <h3 className="text-xl font-bold mb-4">Tax Summary</h3>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-white rounded-lg">
-              <p className="text-sm text-gray-600">Total Tax</p>
-              <p className="text-2xl font-bold text-red-600">${Math.round(totalTax).toLocaleString()}</p>
-            </div>
-            <div className="text-center p-4 bg-white rounded-lg">
-              <p className="text-sm text-gray-600">Estimated Refund</p>
-              <p className="text-2xl font-bold text-green-600">${Math.round(estimatedRefund).toLocaleString()}</p>
-            </div>
-            <div className="text-center p-4 bg-white rounded-lg">
-              <p className="text-sm text-gray-600">Effective Rate</p>
-              <p className="text-2xl font-bold text-blue-600">{totalIncome > 0 ? ((totalTax/totalIncome)*100).toFixed(1) : 0}%</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-between mt-8">
-          <button
-            onClick={() => setCurrentStep('documentUpload')}
-            className="bg-gray-500 text-white px-6 py-3 rounded-lg"
-          >
-            Back to Documents
-          </button>
-          <button
-            onClick={() => setCurrentStep('reviewSubmission')}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg"
-          >
-            Continue to Review
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  const ReviewSubmission = () => {
-    const [submissionStatus, setSubmissionStatus] = useState('ready');
-    const [filingMethod, setFilingMethod] = useState('efiling');
-
-    const handleSubmission = () => {
-      setSubmissionStatus('submitting');
-      setTimeout(() => {
-        setSubmissionStatus('submitted');
-      }, 3000);
-    };
-
-    const totalIncome = formData.income.w2 + formData.income.income1099 + formData.income.investments + formData.income.stateSpecific;
-
-    return (
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-2xl font-bold mb-6">Review & Submission</h2>
-
-        <div className="bg-blue-50 p-6 rounded-lg mb-6">
-          <h3 className="text-lg font-bold mb-4">Return Summary</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p><strong>Filing Status:</strong> {formData.personal.filingStatus}</p>
-              <p><strong>Total Income:</strong> ${totalIncome.toLocaleString()}</p>
-              <p><strong>Deduction Type:</strong> {formData.deductions.standardItemized}</p>
-            </div>
-            <div>
-              <p><strong>Documents:</strong> {formData.documents.length} uploaded</p>
-              <p><strong>Federal Tax:</strong> $8,500</p>
-              <p><strong>State Tax:</strong> $3,200</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="mb-6">
-          <h3 className="text-lg font-bold mb-3">Final Validation</h3>
-          <div className="space-y-2">
-            <div className="flex items-center p-3 bg-green-50 border border-green-200 rounded-lg">
-              <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
-              <span className="text-green-800">All required fields completed</span>
-            </div>
-            <div className="flex items-center p-3 bg-green-50 border border-green-200 rounded-lg">
-              <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
-              <span className="text-green-800">Documents processed successfully</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-yellow-50 p-6 rounded-lg mb-6">
-          <h3 className="text-lg font-bold mb-4">E-signature Support (IRS/State Requirements)</h3>
-          <div className="space-y-3">
-            <label className="flex items-center">
-              <input type="checkbox" className="mr-3" />
-              <span className="text-sm">I declare this return is accurate under penalties of perjury</span>
-            </label>
-            <label className="flex items-center">
-              <input type="checkbox" className="mr-3" />
-              <span className="text-sm">I authorize electronic signature per IRS requirements</span>
-            </label>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-6 mb-6">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <h4 className="font-bold mb-3">E-filing to IRS and State Agencies</h4>
-            <label className="flex items-center">
-              <input 
-                type="radio" 
-                name="filing" 
-                value="efiling"
-                checked={filingMethod === 'efiling'}
-                onChange={(e) => setFilingMethod(e.target.value)}
-                className="mr-2" 
-              />
-              Electronic Filing (Recommended)
-            </label>
-            <p className="text-sm text-blue-600 mt-2">Status tracking available</p>
-          </div>
-
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-bold mb-3">Paper Filing (PDF Generation)</h4>
-            <label className="flex items-center">
-              <input 
-                type="radio" 
-                name="filing" 
-                value="paper"
-                checked={filingMethod === 'paper'}
-                onChange={(e) => setFilingMethod(e.target.value)}
-                className="mr-2" 
-              />
-              Generate PDF for mailing
-            </label>
-            <p className="text-sm text-gray-600 mt-2">Longer processing time</p>
-          </div>
-        </div>
-
-        {submissionStatus === 'submitting' && (
-          <div className="bg-blue-50 p-6 rounded-lg mb-6 text-center">
-            <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="font-medium">Filing to IRS and state agencies...</p>
-            <p className="text-sm text-gray-600">Status tracking in progress</p>
-          </div>
-        )}
-
-        {submissionStatus === 'submitted' && (
-          <div className="bg-green-50 p-6 rounded-lg mb-6 text-center">
-            <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-green-800 mb-2">Successfully Filed!</h3>
-            <p className="text-green-700">Federal Confirmation: 202412345678901234</p>
-            <p className="text-green-700">State Confirmation: CA-2024-987654321</p>
-          </div>
-        )}
-
-        <div className="flex justify-between">
-          <button
-            onClick={() => setCurrentStep('taxCalculation')}
-            className="bg-gray-500 text-white px-6 py-3 rounded-lg"
-          >
-            Back to Calculations
-          </button>
-          
-          {submissionStatus === 'ready' && (
-            <button
-              onClick={handleSubmission}
-              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 flex items-center"
-            >
-              <Send className="w-5 h-5 mr-2" />
-              File Tax Return
-            </button>
-          )}
-
-          {submissionStatus === 'submitted' && (
-            <button
-              onClick={() => setCurrentStep('paymentRefunds')}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg"
-            >
-              Continue to Payment/Refunds
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const PaymentRefunds = () => {
-    const [paymentMethod, setPaymentMethod] = useState('direct-debit');
-    const [refundMethod, setRefundMethod] = useState('direct-deposit');
-
-    return (
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-2xl font-bold mb-6">Payment & Refunds</h2>
-
-        <div className="bg-red-50 p-6 rounded-lg mb-6">
-          <h3 className="text-lg font-bold mb-4 flex items-center">
-            <CreditCard className="w-6 h-6 mr-2" />
-            Integration with IRS/State Payment Systems
-          </h3>
-          <div className="space-y-3">
-            <label className="flex items-center">
-              <input 
-                type="radio" 
-                name="payment" 
-                value="direct-debit"
-                checked={paymentMethod === 'direct-debit'}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className="mr-3" 
-              />
-              Direct Debit (ACH) - Free
-            </label>
-            <label className="flex items-center">
-              <input 
-                type="radio" 
-                name="payment" 
-                value="credit-card"
-                checked={paymentMethod === 'credit-card'}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className="mr-3" 
-              />
-              Credit/Debit Card - 2.5% fee
-            </label>
-          </div>
-          <p className="text-sm text-red-600 mt-3">Amount Due: $1,850 (Due: April 15, 2024)</p>
-        </div>
-
-        <div className="bg-green-50 p-6 rounded-lg mb-6">
-          <h3 className="text-lg font-bold mb-4 flex items-center">
-            <DollarSign className="w-6 h-6 mr-2" />
-            Refund Tracking (Direct Deposit, Check)
-          </h3>
-          <div className="space-y-3">
-            <label className="flex items-center">
-              <input 
-                type="radio" 
-                name="refund" 
-                value="direct-deposit"
-                checked={refundMethod === 'direct-deposit'}
-                onChange={(e) => setRefundMethod(e.target.value)}
-                className="mr-3" 
-              />
-              Direct Deposit (7-10 days)
-            </label>
-            <label className="flex items-center">
-              <input 
-                type="radio" 
-                name="refund" 
-                value="check"
-                checked={refundMethod === 'check'}
-                onChange={(e) => setRefundMethod(e.target.value)}
-                className="mr-3" 
-              />
-              Paper Check (3-4 weeks)
-            </label>
-          </div>
-          <p className="text-sm text-green-600 mt-3">Expected Refund: $3,250</p>
-        </div>
-
-        <div className="bg-blue-50 p-6 rounded-lg mb-6">
-          <h3 className="text-lg font-bold mb-4">Bank Account Information</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <input
-              type="text"
-              placeholder="Routing Number (9 digits)"
-              className="p-3 border rounded-lg"
-            />
-            <input
-              type="text"
-              placeholder="Account Number"
-              className="p-3 border rounded-lg"
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-between">
-          <button
-            onClick={() => setCurrentStep('reviewSubmission')}
-            className="bg-gray-500 text-white px-6 py-3 rounded-lg"
-          >
-            Back to Review
-          </button>
-          <button
-            onClick={() => setCurrentStep('notifications')}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg"
-          >
-            Continue to Notifications
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  const NotificationsSupport = () => {
-    const [notifications, setNotifications] = useState({
-      email: true, sms: false, statusUpdates: true
-    });
-
-    return (
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-2xl font-bold mb-6">Notifications & Support</h2>
-
-        <div className="bg-blue-50 p-6 rounded-lg mb-6">
-          <h3 className="text-lg font-bold mb-4 flex items-center">
-            <Bell className="w-6 h-6 mr-2" />
-            Email/SMS Notifications for Status Updates
-          </h3>
-          <div className="space-y-4">
-            <label className="flex items-center justify-between">
-              <span>Email Notifications</span>
-              <input 
-                type="checkbox" 
-                checked={notifications.email}
-                onChange={(e) => setNotifications({...notifications, email: e.target.checked})}
-                className="w-5 h-5" 
-              />
-            </label>
-            <label className="flex items-center justify-between">
-              <span>SMS Text Updates</span>
-              <input 
-                type="checkbox" 
-                checked={notifications.sms}
-                onChange={(e) => setNotifications({...notifications, sms: e.target.checked})}
-                className="w-5 h-5" 
-              />
-            </label>
-            <label className="flex items-center justify-between">
-              <span>Filing Status Updates</span>
-              <input 
-                type="checkbox" 
-                checked={notifications.statusUpdates}
-                onChange={(e) => setNotifications({...notifications, statusUpdates: e.target.checked})}
-                className="w-5 h-5" 
-              />
-            </label>
-          </div>
-        </div>
-
-        <div className="bg-green-50 p-6 rounded-lg">
-          <h3 className="text-lg font-bold mb-4 flex items-center">
-            <HelpCircle className="w-6 h-6 mr-2" />
-            In-app Help, FAQs, and Live Support/Chat
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white p-4 rounded-lg text-center">
-              <FileText className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-              <h4 className="font-bold mb-2">In-App Help & FAQs</h4>
-              <p className="text-sm text-gray-600 mb-3">Step-by-step guides</p>
-              <button className="bg-blue-600 text-white px-4 py-2 rounded text-sm">
-                Browse Help
-              </button>
-            </div>
-            
-            <div className="bg-white p-4 rounded-lg text-center">
-              <Phone className="w-8 h-8 text-green-600 mx-auto mb-2" />
-              <h4 className="font-bold mb-2">Live Support Chat</h4>
-              <p className="text-sm text-gray-600 mb-3">Real-time assistance</p>
-              <button className="bg-green-600 text-white px-4 py-2 rounded text-sm">
-                Start Chat
-              </button>
-            </div>
-
-            <div className="bg-white p-4 rounded-lg text-center">
-              <Mail className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-              <h4 className="font-bold mb-2">Email Support</h4>
-              <p className="text-sm text-gray-600 mb-3">24-hour response</p>
-              <button className="bg-purple-600 text-white px-4 py-2 rounded text-sm">
-                Send Message
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="text-center mt-8">
-          <button
-            onClick={() => setCurrentStep('complete')}
-            className="bg-blue-600 text-white px-8 py-3 rounded-lg text-lg"
-          >
-            Complete Setup
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  const CompleteDashboard = () => {
-    const [activeModal, setActiveModal] = useState(null);
-    
-    const totalIncome = formData.income.w2 + formData.income.income1099 + formData.income.investments + formData.income.stateSpecific;
-    const standardDeduction = 13850;
-    const taxableIncome = Math.max(0, totalIncome - standardDeduction);
-    
-    let federalTax = 0;
-    if (taxableIncome > 0) {
-      if (taxableIncome <= 11000) {
-        federalTax = taxableIncome * 0.10;
-      } else if (taxableIncome <= 44725) {
-        federalTax = 1100 + (taxableIncome - 11000) * 0.12;
-      } else if (taxableIncome <= 95375) {
-        federalTax = 5147 + (taxableIncome - 44725) * 0.22;
-      } else {
-        federalTax = 16290 + (taxableIncome - 95375) * 0.24;
-      }
-    }
-
-    const stateTax = taxableIncome * 0.05;
-    const totalTax = federalTax + stateTax;
-    const estimatedWithheld = totalIncome * 0.18;
-    const refundAmount = Math.max(0, estimatedWithheld - totalTax);
-    const federalRefund = Math.round(refundAmount * 0.75);
-    const stateRefund = Math.round(refundAmount * 0.25);
-
-    const generateConfirmationNumber = () => {
-      const userHash = (user.email + formData.personal.ssn).split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-      return `2024${userHash.toString().slice(-12)}`;
-    };
-
-    const handleDownloadReturns = () => {
-      const pdfContent = `
-TAX RETURN SUMMARY - 2024
-=========================
-
-Taxpayer Information:
-Name: ${user.email.split('@')[0]} (User)
-SSN: ${formData.personal.ssn || '***-**-****'}
-Filing Status: ${formData.personal.filingStatus || 'Not specified'}
-Address: ${formData.personal.address || 'Not provided'}
-
-Income Summary:
-W-2 Income: ${formData.income.w2.toLocaleString()}
-1099 Income: ${formData.income.income1099.toLocaleString()}
-Investment Income: ${formData.income.investments.toLocaleString()}
-State-Specific Income: ${formData.income.stateSpecific.toLocaleString()}
-Total Income: ${totalIncome.toLocaleString()}
-
-Deduction Information:
-Deduction Type: ${formData.deductions.standardItemized}
-${formData.deductions.standardItemized === 'standard' ? 
-  `Standard Deduction: ${standardDeduction.toLocaleString()}` : 
-  'Itemized Deductions: (Details would be listed here)'}
-Education Credits: ${formData.import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { 
   User, Shield, Upload, Calculator, FileText, CreditCard, Bell, HelpCircle,
   CheckCircle, AlertTriangle, Eye, EyeOff, Download, Send, Phone, Mail, 
@@ -1431,3 +741,848 @@ const USFederalStateTaxSystem = () => {
                   />
                 </div>
               </div>
+            </div>
+          )}
+
+          <div className="flex justify-between mt-8">
+            <button
+              onClick={() => setCurrentStep('registration')}
+              className="bg-gray-500 text-white px-6 py-3 rounded-lg"
+            >
+              Back
+            </button>
+            <button
+              onClick={() => setCurrentStep('documentUpload')}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg"
+            >
+              Continue to Documents
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const DocumentUpload = () => {
+    const [documents, setDocuments] = useState([]);
+    const [importSource, setImportSource] = useState('');
+
+    const handleFileUpload = (e) => {
+      const files = Array.from(e.target.files);
+      files.forEach(file => {
+        const newDoc = {
+          id: Date.now() + Math.random(),
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          status: 'processing'
+        };
+        setDocuments(prev => [...prev, newDoc]);
+        
+        setTimeout(() => {
+          setDocuments(prev => prev.map(doc => 
+            doc.id === newDoc.id ? { ...doc, status: 'completed' } : doc
+          ));
+        }, 2000);
+      });
+
+      setFormData({
+        ...formData,
+        documents: [...formData.documents, ...files.map(file => ({ name: file.name, size: file.size }))]
+      });
+    };
+
+    const handleImport = () => {
+      const importedData = {
+        w2Income: 65000,
+        federalWithheld: 9750,
+        stateWithheld: 3250
+      };
+      
+      setFormData({
+        ...formData,
+        income: { ...formData.income, w2: importedData.w2Income }
+      });
+      
+      alert(`Data imported from ${importSource}: Income ${importedData.w2Income.toLocaleString()}`);
+    };
+
+    return (
+      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
+        <h2 className="text-2xl font-bold mb-6">Document Upload & Import</h2>
+        
+        <div className="bg-blue-50 p-6 rounded-lg mb-6">
+          <h3 className="text-lg font-bold mb-4">Import from External Sources</h3>
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            <select
+              value={importSource}
+              onChange={(e) => setImportSource(e.target.value)}
+              className="p-3 border rounded-lg"
+            >
+              <option value="">Select Source</option>
+              <option value="ADP Payroll">ADP Payroll</option>
+              <option value="Bank of America">Bank of America</option>
+              <option value="TurboTax 2023">Previous TurboTax</option>
+              <option value="H&R Block">H&R Block</option>
+            </select>
+            <button
+              onClick={handleImport}
+              disabled={!importSource}
+              className="bg-green-600 text-white px-4 py-3 rounded-lg disabled:bg-gray-400"
+            >
+              Import Data
+            </button>
+          </div>
+        </div>
+
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-6">
+          <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium mb-2">Upload Tax Documents</h3>
+          <p className="text-gray-600 mb-4">PDF, JPG, PNG supported</p>
+          
+          <input
+            type="file"
+            multiple
+            onChange={handleFileUpload}
+            className="hidden"
+            id="file-upload"
+            accept=".pdf,.jpg,.jpeg,.png"
+          />
+          <label
+            htmlFor="file-upload"
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg cursor-pointer hover:bg-blue-700"
+          >
+            Choose Files
+          </label>
+        </div>
+
+        {documents.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-lg font-bold mb-4">Uploaded Documents</h3>
+            <div className="space-y-3">
+              {documents.map((doc) => (
+                <div key={doc.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center">
+                    <FileText className="w-6 h-6 text-blue-600 mr-3" />
+                    <div>
+                      <p className="font-medium">{doc.name}</p>
+                      <p className="text-sm text-gray-600">{(doc.size / 1024).toFixed(1)}KB</p>
+                    </div>
+                  </div>
+                  <div>
+                    {doc.status === 'processing' && (
+                      <span className="text-blue-600">Processing...</span>
+                    )}
+                    {doc.status === 'completed' && (
+                      <CheckCircle className="w-6 h-6 text-green-600" />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-between">
+          <button
+            onClick={() => setCurrentStep('dataCollection')}
+            className="bg-gray-500 text-white px-6 py-3 rounded-lg"
+          >
+            Back to Data Entry
+          </button>
+          <button
+            onClick={() => setCurrentStep('taxCalculation')}
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg"
+          >
+            Continue to Calculations
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const TaxCalculation = () => {
+    const totalIncome = formData.income.w2 + formData.income.income1099 + formData.income.investments + formData.income.stateSpecific;
+    const standardDeduction = 13850;
+    const taxableIncome = Math.max(0, totalIncome - standardDeduction);
+    
+    let federalTax = 0;
+    if (taxableIncome > 0) {
+      if (taxableIncome <= 11000) {
+        federalTax = taxableIncome * 0.10;
+      } else if (taxableIncome <= 44725) {
+        federalTax = 1100 + (taxableIncome - 11000) * 0.12;
+      } else if (taxableIncome <= 95375) {
+        federalTax = 5147 + (taxableIncome - 44725) * 0.22;
+      } else {
+        federalTax = 16290 + (taxableIncome - 95375) * 0.24;
+      }
+    }
+
+    const stateTax = taxableIncome * 0.05;
+    const totalTax = federalTax + stateTax;
+    const estimatedRefund = Math.max(0, (totalIncome * 0.18) - totalTax);
+
+    const [errors] = useState([
+      { type: 'warning', message: 'Verify W-2 income matches uploaded documents' },
+      { type: 'info', message: 'Consider maximizing retirement contributions' }
+    ]);
+
+    return (
+      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
+        <h2 className="text-2xl font-bold mb-6">Tax Calculations</h2>
+
+        <div className="mb-6">
+          <h3 className="text-lg font-bold mb-3">Error Checking & Validation</h3>
+          {errors.map((error, index) => (
+            <div key={index} className={`flex items-center p-3 rounded-lg mb-2 ${
+              error.type === 'warning' ? 'bg-yellow-50 border border-yellow-200' : 'bg-blue-50 border border-blue-200'
+            }`}>
+              {error.type === 'warning' ? 
+                <AlertTriangle className="w-5 h-5 text-yellow-600 mr-3" /> :
+                <CheckCircle className="w-5 h-5 text-blue-600 mr-3" />
+              }
+              <span>{error.message}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="bg-blue-50 p-6 rounded-lg">
+            <h3 className="text-lg font-bold mb-4">Federal Tax (Form 1040)</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span>Total Income:</span>
+                <span className="font-medium">${totalIncome.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Standard Deduction:</span>
+                <span className="font-medium">-${standardDeduction.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <span>Taxable Income:</span>
+                <span className="font-bold">${taxableIncome.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Federal Tax:</span>
+                <span className="font-bold text-red-600">${Math.round(federalTax).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-green-50 p-6 rounded-lg">
+            <h3 className="text-lg font-bold mb-4">State Tax Calculation</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span>Taxable Income:</span>
+                <span className="font-medium">${taxableIncome.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>State Tax Rate:</span>
+                <span className="font-medium">5.0%</span>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <span>State Tax:</span>
+                <span className="font-bold text-red-600">${Math.round(stateTax).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-yellow-50 p-4 rounded-lg mb-6">
+          <h4 className="font-bold mb-2">Amended Returns Support</h4>
+          <p className="text-sm text-gray-700 mb-3">
+            Need to file an amended return? We support Form 1040X for corrections.
+          </p>
+          <button className="bg-yellow-600 text-white px-4 py-2 rounded text-sm">
+            File Amended Return
+          </button>
+        </div>
+
+        <div className="bg-gray-100 p-6 rounded-lg">
+          <h3 className="text-xl font-bold mb-4">Tax Summary</h3>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center p-4 bg-white rounded-lg">
+              <p className="text-sm text-gray-600">Total Tax</p>
+              <p className="text-2xl font-bold text-red-600">${Math.round(totalTax).toLocaleString()}</p>
+            </div>
+            <div className="text-center p-4 bg-white rounded-lg">
+              <p className="text-sm text-gray-600">Estimated Refund</p>
+              <p className="text-2xl font-bold text-green-600">${Math.round(estimatedRefund).toLocaleString()}</p>
+            </div>
+            <div className="text-center p-4 bg-white rounded-lg">
+              <p className="text-sm text-gray-600">Effective Rate</p>
+              <p className="text-2xl font-bold text-blue-600">{totalIncome > 0 ? ((totalTax/totalIncome)*100).toFixed(1) : 0}%</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-between mt-8">
+          <button
+            onClick={() => setCurrentStep('documentUpload')}
+            className="bg-gray-500 text-white px-6 py-3 rounded-lg"
+          >
+            Back to Documents
+          </button>
+          <button
+            onClick={() => setCurrentStep('reviewSubmission')}
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg"
+          >
+            Continue to Review
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const ReviewSubmission = () => {
+    const [submissionStatus, setSubmissionStatus] = useState('ready');
+    const [filingMethod, setFilingMethod] = useState('efiling');
+
+    const handleSubmission = () => {
+      setSubmissionStatus('submitting');
+      setTimeout(() => {
+        setSubmissionStatus('submitted');
+      }, 3000);
+    };
+
+    const totalIncome = formData.income.w2 + formData.income.income1099 + formData.income.investments + formData.income.stateSpecific;
+
+    return (
+      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
+        <h2 className="text-2xl font-bold mb-6">Review & Submission</h2>
+
+        <div className="bg-blue-50 p-6 rounded-lg mb-6">
+          <h3 className="text-lg font-bold mb-4">Return Summary</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p><strong>Filing Status:</strong> {formData.personal.filingStatus}</p>
+              <p><strong>Total Income:</strong> ${totalIncome.toLocaleString()}</p>
+              <p><strong>Deduction Type:</strong> {formData.deductions.standardItemized}</p>
+            </div>
+            <div>
+              <p><strong>Documents:</strong> {formData.documents.length} uploaded</p>
+              <p><strong>Federal Tax:</strong> $8,500</p>
+              <p><strong>State Tax:</strong> $3,200</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <h3 className="text-lg font-bold mb-3">Final Validation</h3>
+          <div className="space-y-2">
+            <div className="flex items-center p-3 bg-green-50 border border-green-200 rounded-lg">
+              <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
+              <span className="text-green-800">All required fields completed</span>
+            </div>
+            <div className="flex items-center p-3 bg-green-50 border border-green-200 rounded-lg">
+              <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
+              <span className="text-green-800">Documents processed successfully</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-yellow-50 p-6 rounded-lg mb-6">
+          <h3 className="text-lg font-bold mb-4">E-signature Support (IRS/State Requirements)</h3>
+          <div className="space-y-3">
+            <label className="flex items-center">
+              <input type="checkbox" className="mr-3" />
+              <span className="text-sm">I declare this return is accurate under penalties of perjury</span>
+            </label>
+            <label className="flex items-center">
+              <input type="checkbox" className="mr-3" />
+              <span className="text-sm">I authorize electronic signature per IRS requirements</span>
+            </label>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-6 mb-6">
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <h4 className="font-bold mb-3">E-filing to IRS and State Agencies</h4>
+            <label className="flex items-center">
+              <input 
+                type="radio" 
+                name="filing" 
+                value="efiling"
+                checked={filingMethod === 'efiling'}
+                onChange={(e) => setFilingMethod(e.target.value)}
+                className="mr-2" 
+              />
+              Electronic Filing (Recommended)
+            </label>
+            <p className="text-sm text-blue-600 mt-2">Status tracking available</p>
+          </div>
+
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h4 className="font-bold mb-3">Paper Filing (PDF Generation)</h4>
+            <label className="flex items-center">
+              <input 
+                type="radio" 
+                name="filing" 
+                value="paper"
+                checked={filingMethod === 'paper'}
+                onChange={(e) => setFilingMethod(e.target.value)}
+                className="mr-2" 
+              />
+              Generate PDF for mailing
+            </label>
+            <p className="text-sm text-gray-600 mt-2">Longer processing time</p>
+          </div>
+        </div>
+
+        {submissionStatus === 'submitting' && (
+          <div className="bg-blue-50 p-6 rounded-lg mb-6 text-center">
+            <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="font-medium">Filing to IRS and state agencies...</p>
+            <p className="text-sm text-gray-600">Status tracking in progress</p>
+          </div>
+        )}
+
+        {submissionStatus === 'submitted' && (
+          <div className="bg-green-50 p-6 rounded-lg mb-6 text-center">
+            <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-green-800 mb-2">Successfully Filed!</h3>
+            <p className="text-green-700">Federal Confirmation: 202412345678901234</p>
+            <p className="text-green-700">State Confirmation: CA-2024-987654321</p>
+          </div>
+        )}
+
+        <div className="flex justify-between">
+          <button
+            onClick={() => setCurrentStep('taxCalculation')}
+            className="bg-gray-500 text-white px-6 py-3 rounded-lg"
+          >
+            Back to Calculations
+          </button>
+          
+          {submissionStatus === 'ready' && (
+            <button
+              onClick={handleSubmission}
+              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 flex items-center"
+            >
+              <Send className="w-5 h-5 mr-2" />
+              File Tax Return
+            </button>
+          )}
+
+          {submissionStatus === 'submitted' && (
+            <button
+              onClick={() => setCurrentStep('paymentRefunds')}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg"
+            >
+              Continue to Payment/Refunds
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const PaymentRefunds = () => {
+    const [paymentMethod, setPaymentMethod] = useState('direct-debit');
+    const [refundMethod, setRefundMethod] = useState('direct-deposit');
+
+    return (
+      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
+        <h2 className="text-2xl font-bold mb-6">Payment & Refunds</h2>
+
+        <div className="bg-red-50 p-6 rounded-lg mb-6">
+          <h3 className="text-lg font-bold mb-4 flex items-center">
+            <CreditCard className="w-6 h-6 mr-2" />
+            Integration with IRS/State Payment Systems
+          </h3>
+          <div className="space-y-3">
+            <label className="flex items-center">
+              <input 
+                type="radio" 
+                name="payment" 
+                value="direct-debit"
+                checked={paymentMethod === 'direct-debit'}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="mr-3" 
+              />
+              Direct Debit (ACH) - Free
+            </label>
+            <label className="flex items-center">
+              <input 
+                type="radio" 
+                name="payment" 
+                value="credit-card"
+                checked={paymentMethod === 'credit-card'}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="mr-3" 
+              />
+              Credit/Debit Card - 2.5% fee
+            </label>
+          </div>
+          <p className="text-sm text-red-600 mt-3">Amount Due: $1,850 (Due: April 15, 2024)</p>
+        </div>
+
+        <div className="bg-green-50 p-6 rounded-lg mb-6">
+          <h3 className="text-lg font-bold mb-4 flex items-center">
+            <DollarSign className="w-6 h-6 mr-2" />
+            Refund Tracking (Direct Deposit, Check)
+          </h3>
+          <div className="space-y-3">
+            <label className="flex items-center">
+              <input 
+                type="radio" 
+                name="refund" 
+                value="direct-deposit"
+                checked={refundMethod === 'direct-deposit'}
+                onChange={(e) => setRefundMethod(e.target.value)}
+                className="mr-3" 
+              />
+              Direct Deposit (7-10 days)
+            </label>
+            <label className="flex items-center">
+              <input 
+                type="radio" 
+                name="refund" 
+                value="check"
+                checked={refundMethod === 'check'}
+                onChange={(e) => setRefundMethod(e.target.value)}
+                className="mr-3" 
+              />
+              Paper Check (3-4 weeks)
+            </label>
+          </div>
+          <p className="text-sm text-green-600 mt-3">Expected Refund: $3,250</p>
+        </div>
+
+        <div className="bg-blue-50 p-6 rounded-lg mb-6">
+          <h3 className="text-lg font-bold mb-4">Bank Account Information</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <input
+              type="text"
+              placeholder="Routing Number (9 digits)"
+              className="p-3 border rounded-lg"
+            />
+            <input
+              type="text"
+              placeholder="Account Number"
+              className="p-3 border rounded-lg"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-between">
+          <button
+            onClick={() => setCurrentStep('reviewSubmission')}
+            className="bg-gray-500 text-white px-6 py-3 rounded-lg"
+          >
+            Back to Review
+          </button>
+          <button
+            onClick={() => setCurrentStep('notifications')}
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg"
+          >
+            Continue to Notifications
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const NotificationsSupport = () => {
+    const [notifications, setNotifications] = useState({
+      email: true, sms: false, statusUpdates: true
+    });
+
+    return (
+      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
+        <h2 className="text-2xl font-bold mb-6">Notifications & Support</h2>
+
+        <div className="bg-blue-50 p-6 rounded-lg mb-6">
+          <h3 className="text-lg font-bold mb-4 flex items-center">
+            <Bell className="w-6 h-6 mr-2" />
+            Email/SMS Notifications for Status Updates
+          </h3>
+          <div className="space-y-4">
+            <label className="flex items-center justify-between">
+              <span>Email Notifications</span>
+              <input 
+                type="checkbox" 
+                checked={notifications.email}
+                onChange={(e) => setNotifications({...notifications, email: e.target.checked})}
+                className="w-5 h-5" 
+              />
+            </label>
+            <label className="flex items-center justify-between">
+              <span>SMS Text Updates</span>
+              <input 
+                type="checkbox" 
+                checked={notifications.sms}
+                onChange={(e) => setNotifications({...notifications, sms: e.target.checked})}
+                className="w-5 h-5" 
+              />
+            </label>
+            <label className="flex items-center justify-between">
+              <span>Filing Status Updates</span>
+              <input 
+                type="checkbox" 
+                checked={notifications.statusUpdates}
+                onChange={(e) => setNotifications({...notifications, statusUpdates: e.target.checked})}
+                className="w-5 h-5" 
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="bg-green-50 p-6 rounded-lg">
+          <h3 className="text-lg font-bold mb-4 flex items-center">
+            <HelpCircle className="w-6 h-6 mr-2" />
+            In-app Help, FAQs, and Live Support/Chat
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white p-4 rounded-lg text-center">
+              <FileText className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+              <h4 className="font-bold mb-2">In-App Help & FAQs</h4>
+              <p className="text-sm text-gray-600 mb-3">Step-by-step guides</p>
+              <button className="bg-blue-600 text-white px-4 py-2 rounded text-sm">
+                Browse Help
+              </button>
+            </div>
+            
+            <div className="bg-white p-4 rounded-lg text-center">
+              <Phone className="w-8 h-8 text-green-600 mx-auto mb-2" />
+              <h4 className="font-bold mb-2">Live Support Chat</h4>
+              <p className="text-sm text-gray-600 mb-3">Real-time assistance</p>
+              <button className="bg-green-600 text-white px-4 py-2 rounded text-sm">
+                Start Chat
+              </button>
+            </div>
+
+            <div className="bg-white p-4 rounded-lg text-center">
+              <Mail className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+              <h4 className="font-bold mb-2">Email Support</h4>
+              <p className="text-sm text-gray-600 mb-3">24-hour response</p>
+              <button className="bg-purple-600 text-white px-4 py-2 rounded text-sm">
+                Send Message
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="text-center mt-8">
+          <button
+            onClick={() => setCurrentStep('complete')}
+            className="bg-blue-600 text-white px-8 py-3 rounded-lg text-lg"
+          >
+            Complete Setup
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const CompleteDashboard = () => {
+    const totalIncome = formData.income.w2 + formData.income.income1099 + formData.income.investments + formData.income.stateSpecific;
+    const standardDeduction = 13850;
+    const taxableIncome = Math.max(0, totalIncome - standardDeduction);
+    
+    let federalTax = 0;
+    if (taxableIncome > 0) {
+      if (taxableIncome <= 11000) {
+        federalTax = taxableIncome * 0.10;
+      } else if (taxableIncome <= 44725) {
+        federalTax = 1100 + (taxableIncome - 11000) * 0.12;
+      } else if (taxableIncome <= 95375) {
+        federalTax = 5147 + (taxableIncome - 44725) * 0.22;
+      } else {
+        federalTax = 16290 + (taxableIncome - 95375) * 0.24;
+      }
+    }
+
+    const stateTax = taxableIncome * 0.05;
+    const totalTax = federalTax + stateTax;
+    const estimatedWithheld = totalIncome * 0.18;
+    const refundAmount = Math.max(0, estimatedWithheld - totalTax);
+
+    return (
+      <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-lg p-6">
+        <h2 className="text-3xl font-bold mb-8 text-center">Tax Filing Complete!</h2>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="bg-green-50 p-6 rounded-lg text-center">
+            <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-green-800 mb-2">Filing Status</h3>
+            <p className="text-green-700">Successfully Filed</p>
+            <p className="text-sm text-gray-600 mt-2">Federal & State Returns</p>
+          </div>
+          
+          <div className="bg-blue-50 p-6 rounded-lg text-center">
+            <DollarSign className="w-16 h-16 text-blue-600 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-blue-800 mb-2">Expected Refund</h3>
+            <p className="text-2xl font-bold text-blue-700">${Math.round(refundAmount).toLocaleString()}</p>
+            <p className="text-sm text-gray-600 mt-2">7-10 business days</p>
+          </div>
+          
+          <div className="bg-purple-50 p-6 rounded-lg text-center">
+            <FileText className="w-16 h-16 text-purple-600 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-purple-800 mb-2">Tax Documents</h3>
+            <p className="text-purple-700">Ready for Download</p>
+            <button className="mt-2 bg-purple-600 text-white px-4 py-2 rounded text-sm flex items-center mx-auto">
+              <Download className="w-4 h-4 mr-2" />
+              Download PDF
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div className="bg-gray-50 p-6 rounded-lg">
+            <h3 className="text-xl font-bold mb-4">Filing Summary</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span>Filing Status:</span>
+                <span className="font-medium">{formData.personal.filingStatus || 'Single'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Total Income:</span>
+                <span className="font-medium">${totalIncome.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Federal Tax:</span>
+                <span className="font-medium">${Math.round(federalTax).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>State Tax:</span>
+                <span className="font-medium">${Math.round(stateTax).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <span className="font-bold">Total Tax:</span>
+                <span className="font-bold">${Math.round(totalTax).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-yellow-50 p-6 rounded-lg">
+            <h3 className="text-xl font-bold mb-4">Confirmation Details</h3>
+            <div className="space-y-3">
+              <div>
+                <span className="text-sm text-gray-600">Federal Confirmation:</span>
+                <p className="font-mono text-sm">2024{user?.email?.split('@')[0]?.slice(0,4) || '1234'}567890123</p>
+              </div>
+              <div>
+                <span className="text-sm text-gray-600">State Confirmation:</span>
+                <p className="font-mono text-sm">TX-2024-{Math.floor(Math.random() * 1000000)}</p>
+              </div>
+              <div>
+                <span className="text-sm text-gray-600">Filing Date:</span>
+                <p className="font-medium">{new Date().toLocaleDateString()}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-blue-50 p-6 rounded-lg mb-6">
+          <h3 className="text-lg font-bold mb-4">Next Steps & Important Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h4 className="font-medium mb-2">Refund Tracking</h4>
+              <p className="text-sm text-gray-700 mb-3">
+                Track your refund status using IRS "Where's My Refund" tool or check back here for updates.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-medium mb-2">Document Storage</h4>
+              <p className="text-sm text-gray-700 mb-3">
+                Keep copies of your tax return and supporting documents for at least 7 years.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="text-center">
+          <button
+            onClick={() => setCurrentStep('registration')}
+            className="bg-blue-600 text-white px-8 py-3 rounded-lg text-lg mr-4"
+          >
+            Start New Return
+          </button>
+          <button
+            className="bg-green-600 text-white px-8 py-3 rounded-lg text-lg"
+          >
+            View Tax Calendar
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // Navigation steps
+  const steps = [
+    { id: 'registration', title: 'Registration', component: UserRegistrationAuth },
+    { id: 'dataCollection', title: 'Data Collection', component: DataCollection },
+    { id: 'documentUpload', title: 'Documents', component: DocumentUpload },
+    { id: 'taxCalculation', title: 'Calculations', component: TaxCalculation },
+    { id: 'reviewSubmission', title: 'Review', component: ReviewSubmission },
+    { id: 'paymentRefunds', title: 'Payment', component: PaymentRefunds },
+    { id: 'notifications', title: 'Notifications', component: NotificationsSupport },
+    { id: 'complete', title: 'Complete', component: CompleteDashboard }
+  ];
+
+  const currentStepIndex = steps.findIndex(step => step.id === currentStep);
+  const CurrentComponent = steps.find(step => step.id === currentStep)?.component || UserRegistrationAuth;
+
+  return (
+    <div className="min-h-screen bg-gray-100 py-8">
+      <div className="max-w-7xl mx-auto px-4">
+        <header className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">US Federal & State Tax Filing System</h1>
+          <p className="text-gray-600">Complete tax preparation and e-filing solution</p>
+        </header>
+
+        {/* Progress Bar */}
+        <div className="max-w-4xl mx-auto mb-8">
+          <div className="flex items-center justify-between mb-4">
+            {steps.map((step, index) => (
+              <div
+                key={step.id}
+                className={`flex items-center ${index < steps.length - 1 ? 'flex-1' : ''}`}
+              >
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
+                    index <= currentStepIndex
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-300 text-gray-600'
+                  }`}
+                >
+                  {index + 1}
+                </div>
+                <span className={`ml-2 text-sm ${index <= currentStepIndex ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>
+                  {step.title}
+                </span>
+                {index < steps.length - 1 && (
+                  <div className={`flex-1 h-1 mx-4 ${index < currentStepIndex ? 'bg-blue-600' : 'bg-gray-300'}`} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <main>
+          <CurrentComponent />
+        </main>
+
+        {/* Footer */}
+        <footer className="text-center mt-12 text-gray-500 text-sm">
+          <p>© 2024 US Tax Filing System - Secure, Compliant, and IRS-Approved</p>
+          <p className="mt-2">
+            <span className="inline-flex items-center">
+              <Lock className="w-4 h-4 mr-1" />
+              256-bit SSL Encryption
+            </span>
+            <span className="mx-4">•</span>
+            <span>IRS e-file Provider</span>
+            <span className="mx-4">•</span>
+            <span>Bank-Level Security</span>
+          </p>
+        </footer>
+      </div>
+    </div>
+  );
+};
+
+export default USFederalStateTaxSystem;
