@@ -1475,19 +1475,115 @@ State: CA-2024-987654321
 Filing Date: ${new Date().toLocaleDateString()}
     `;
 
+   // Fixed Completion Dashboard with Real User Data
+const CompleteDashboard = () => {
+  const [activeModal, setActiveModal] = useState(null);
+  
+  // Calculate real values from user's form data
+  const totalIncome = formData.income.w2 + formData.income.income1099 + formData.income.investments + formData.income.stateSpecific;
+  const standardDeduction = 13850;
+  const taxableIncome = Math.max(0, totalIncome - standardDeduction);
+  
+  // Federal tax calculation (same as TaxCalculation component)
+  let federalTax = 0;
+  if (taxableIncome > 0) {
+    if (taxableIncome <= 11000) {
+      federalTax = taxableIncome * 0.10;
+    } else if (taxableIncome <= 44725) {
+      federalTax = 1100 + (taxableIncome - 11000) * 0.12;
+    } else if (taxableIncome <= 95375) {
+      federalTax = 5147 + (taxableIncome - 44725) * 0.22;
+    } else {
+      federalTax = 16290 + (taxableIncome - 95375) * 0.24;
+    }
+  }
+
+  // State tax calculation
+  const stateTax = taxableIncome * 0.05;
+  const totalTax = federalTax + stateTax;
+  const estimatedWithheld = totalIncome * 0.18; // Assume 18% withholding
+  const refundAmount = Math.max(0, estimatedWithheld - totalTax);
+  const federalRefund = Math.round(refundAmount * 0.75); // 75% federal
+  const stateRefund = Math.round(refundAmount * 0.25); // 25% state
+
+  const [refundStatus, setRefundStatus] = useState({
+    federal: { 
+      status: 'Processing', 
+      date: 'Expected: March 15, 2024', 
+      amount: `$${federalRefund.toLocaleString()}` 
+    },
+    state: { 
+      status: 'Approved', 
+      date: 'Expected: March 10, 2024', 
+      amount: `$${stateRefund.toLocaleString()}` 
+    }
+  });
+
+  // Generate confirmation number based on user data
+  const generateConfirmationNumber = () => {
+    const userHash = (user.email + formData.personal.ssn).split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+    return `2024${userHash.toString().slice(-12)}`;
+  };
+
+  // Download Returns Function with Real Data
+  const handleDownloadReturns = () => {
+    const pdfContent = `
+TAX RETURN SUMMARY - 2024
+=========================
+
+Taxpayer Information:
+Name: ${user.email.split('@')[0]} (User)
+SSN: ${formData.personal.ssn || '***-**-****'}
+Filing Status: ${formData.personal.filingStatus || 'Not specified'}
+Address: ${formData.personal.address || 'Not provided'}
+
+Income Summary:
+W-2 Income: $${formData.income.w2.toLocaleString()}
+1099 Income: $${formData.income.income1099.toLocaleString()}
+Investment Income: $${formData.income.investments.toLocaleString()}
+State-Specific Income: $${formData.income.stateSpecific.toLocaleString()}
+Total Income: $${totalIncome.toLocaleString()}
+
+Deduction Information:
+Deduction Type: ${formData.deductions.standardItemized}
+${formData.deductions.standardItemized === 'standard' ? 
+  `Standard Deduction: $${standardDeduction.toLocaleString()}` : 
+  'Itemized Deductions: (Details would be listed here)'}
+Education Credits: $${formData.deductions.education.toLocaleString()}
+Child Tax Credit: $${formData.deductions.childCredit.toLocaleString()}
+
+Tax Calculation:
+Taxable Income: $${taxableIncome.toLocaleString()}
+Federal Tax: $${Math.round(federalTax).toLocaleString()}
+State Tax: $${Math.round(stateTax).toLocaleString()}
+Total Tax: $${Math.round(totalTax).toLocaleString()}
+
+Refund Information:
+Federal Refund: $${federalRefund.toLocaleString()}
+State Refund: $${stateRefund.toLocaleString()}
+Total Refund: $${refundAmount.toLocaleString()}
+
+Confirmation Numbers:
+Federal: ${generateConfirmationNumber()}
+State: CA-2024-${(Math.random() * 1000000000).toFixed(0)}
+
+Documents Processed: ${formData.documents.length} files
+Filing Date: ${new Date().toLocaleDateString()}
+Filing Method: Electronic
+    `;
+
     // Create and download file
     const blob = new Blob([pdfContent], { type: 'text/plain' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'Tax_Return_2024_Summary.txt';
+    link.download = `Tax_Return_2024_${user.email.split('@')[0]}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
 
-    // Show success message
-    alert('Tax return summary downloaded successfully!\n\nNote: In a real system, this would be a secure PDF with your complete tax forms.');
+    alert('Your personalized tax return summary has been downloaded!\n\nThis contains all the information you entered during the filing process.');
   };
 
   // Track Refund Function
@@ -1505,12 +1601,16 @@ Filing Date: ${new Date().toLocaleDateString()}
     setActiveModal(null);
   };
 
-  // Mock document list
+  // Dynamic document list based on user's actual uploads and data
   const documents = [
     { name: 'Form 1040 - Federal Return', type: 'PDF', size: '245 KB', status: 'Filed' },
-    { name: 'State Return - California', type: 'PDF', size: '189 KB', status: 'Filed' },
-    { name: 'W-2 from Tech Corp Inc', type: 'PDF', size: '87 KB', status: 'Processed' },
-    { name: '1099-MISC from Freelance Hub', type: 'PDF', size: '62 KB', status: 'Processed' },
+    { name: `State Return - ${formData.personal.filingStatus ? 'Filed' : 'California'}`, type: 'PDF', size: '189 KB', status: 'Filed' },
+    ...formData.documents.map((doc, index) => ({
+      name: doc.name || `Uploaded Document ${index + 1}`,
+      type: 'PDF',
+      size: doc.size ? `${Math.round(doc.size / 1024)} KB` : '85 KB',
+      status: 'Processed'
+    })),
     { name: 'Filing Confirmation', type: 'PDF', size: '45 KB', status: 'Available' }
   ];
 
@@ -1521,17 +1621,37 @@ Filing Date: ${new Date().toLocaleDateString()}
         <h2 className="text-3xl font-bold mb-4">Tax Filing Complete!</h2>
         
         <div className="bg-gray-100 p-6 rounded-lg mb-6">
-          <h3 className="text-xl font-bold mb-4">Filing Summary</h3>
+          <h3 className="text-xl font-bold mb-4">Your Filing Summary</h3>
           <div className="grid grid-cols-2 gap-4 text-left">
             <div>
               <p><strong>Federal Status:</strong> Filed & Accepted</p>
               <p><strong>State Status:</strong> Filed & Accepted</p>
-              <p><strong>Expected Refund:</strong> $3,250</p>
+              <p><strong>Expected Refund:</strong> ${refundAmount.toLocaleString()}</p>
+              <p><strong>Your Total Income:</strong> ${totalIncome.toLocaleString()}</p>
             </div>
             <div>
               <p><strong>Filing Method:</strong> Electronic</p>
-              <p><strong>Confirmation:</strong> 202412345678901234</p>
+              <p><strong>Confirmation:</strong> {generateConfirmationNumber()}</p>
               <p><strong>Refund Method:</strong> Direct Deposit</p>
+              <p><strong>Documents Uploaded:</strong> {formData.documents.length}</p>
+            </div>
+          </div>
+          
+          {/* Show user's specific data */}
+          <div className="mt-4 pt-4 border-t">
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div className="bg-blue-50 p-3 rounded">
+                <p className="font-medium">W-2 Income</p>
+                <p className="text-lg">${formData.income.w2.toLocaleString()}</p>
+              </div>
+              <div className="bg-green-50 p-3 rounded">
+                <p className="font-medium">1099 Income</p>
+                <p className="text-lg">${formData.income.income1099.toLocaleString()}</p>
+              </div>
+              <div className="bg-purple-50 p-3 rounded">
+                <p className="font-medium">Investments</p>
+                <p className="text-lg">${formData.income.investments.toLocaleString()}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -1542,31 +1662,31 @@ Filing Date: ${new Date().toLocaleDateString()}
             className="bg-blue-600 text-white p-4 rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Download className="w-6 h-6 mx-auto mb-2" />
-            Download Returns
+            Download Your Returns
           </button>
           <button 
             onClick={handleTrackRefund}
             className="bg-green-600 text-white p-4 rounded-lg hover:bg-green-700 transition-colors"
           >
             <DollarSign className="w-6 h-6 mx-auto mb-2" />
-            Track Refund
+            Track Your Refund
           </button>
           <button 
             onClick={handleViewDocuments}
             className="bg-purple-600 text-white p-4 rounded-lg hover:bg-purple-700 transition-colors"
           >
             <FileText className="w-6 h-6 mx-auto mb-2" />
-            View Documents
+            View Your Documents
           </button>
         </div>
       </div>
 
-      {/* Refund Tracking Modal */}
+      {/* Refund Tracking Modal with Real Data */}
       {activeModal === 'refund' && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-96 overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold">Refund Status Tracker</h3>
+              <h3 className="text-xl font-bold">Your Refund Status</h3>
               <button 
                 onClick={closeModal}
                 className="text-gray-400 hover:text-gray-600"
@@ -1587,6 +1707,7 @@ Filing Date: ${new Date().toLocaleDateString()}
                     <p><strong>Amount:</strong> {refundStatus.federal.amount}</p>
                     <p><strong>Status:</strong> <span className="text-blue-600">{refundStatus.federal.status}</span></p>
                     <p><strong>Expected:</strong> {refundStatus.federal.date}</p>
+                    <p><strong>Based on Income:</strong> ${totalIncome.toLocaleString()}</p>
                   </div>
                   <div className="text-right">
                     <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
@@ -1608,6 +1729,7 @@ Filing Date: ${new Date().toLocaleDateString()}
                     <p><strong>Amount:</strong> {refundStatus.state.amount}</p>
                     <p><strong>Status:</strong> <span className="text-green-600">{refundStatus.state.status}</span></p>
                     <p><strong>Expected:</strong> {refundStatus.state.date}</p>
+                    <p><strong>Filing Status:</strong> {formData.personal.filingStatus || 'Single'}</p>
                   </div>
                   <div className="text-right">
                     <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
@@ -1618,25 +1740,19 @@ Filing Date: ${new Date().toLocaleDateString()}
                 </div>
               </div>
 
-              {/* Tracking Information */}
+              {/* User's Tax Summary */}
               <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-bold mb-3">Tracking Timeline</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center">
-                    <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
-                    <span>Return received and accepted</span>
+                <h4 className="font-bold mb-3">Your Tax Summary</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p><strong>Total Income:</strong> ${totalIncome.toLocaleString()}</p>
+                    <p><strong>Taxable Income:</strong> ${taxableIncome.toLocaleString()}</p>
+                    <p><strong>Total Tax:</strong> ${Math.round(totalTax).toLocaleString()}</p>
                   </div>
-                  <div className="flex items-center">
-                    <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
-                    <span>Return approved for processing</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-4 h-4 border-2 border-blue-600 rounded-full mr-2"></div>
-                    <span>Refund being processed</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-4 h-4 border-2 border-gray-300 rounded-full mr-2"></div>
-                    <span>Refund sent to bank</span>
+                  <div>
+                    <p><strong>Deduction Type:</strong> {formData.deductions.standardItemized}</p>
+                    <p><strong>Education Credits:</strong> ${formData.deductions.education.toLocaleString()}</p>
+                    <p><strong>Child Credits:</strong> ${formData.deductions.childCredit.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
@@ -1654,6 +1770,73 @@ Filing Date: ${new Date().toLocaleDateString()}
         </div>
       )}
 
+      {/* Documents Modal with Real Documents */}
+      {activeModal === 'documents' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-96 overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold">Your Tax Documents</h3>
+              <button 
+                onClick={closeModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              {documents.map((doc, index) => (
+                <div key={index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                  <div className="flex items-center">
+                    <FileText className="w-6 h-6 text-blue-600 mr-3" />
+                    <div>
+                      <p className="font-medium">{doc.name}</p>
+                      <p className="text-sm text-gray-600">{doc.type} • {doc.size}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      doc.status === 'Filed' ? 'bg-green-100 text-green-800' :
+                      doc.status === 'Processed' ? 'bg-blue-100 text-blue-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {doc.status}
+                    </span>
+                    <button 
+                      onClick={() => {
+                        alert(`Downloading ${doc.name} with your personal data...\n\nThis would contain your actual tax information.`);
+                      }}
+                      className="text-blue-600 hover:text-blue-800 text-sm"
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="mt-6 text-center">
+              <button 
+                onClick={() => {
+                  alert(`Downloading all documents for ${user.email}...\n\nTotal documents: ${documents.length}\nTotal income processed: $${totalIncome.toLocaleString()}`);
+                }}
+                className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 mr-3"
+              >
+                Download All Your Documents
+              </button>
+              <button 
+                onClick={closeModal}
+                className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
       {/* Documents Modal */}
       {activeModal === 'documents' && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
